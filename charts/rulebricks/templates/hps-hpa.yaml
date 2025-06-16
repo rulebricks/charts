@@ -1,0 +1,44 @@
+{{- if and .Values.hps .Values.hps.enabled .Values.app.autoscaling.enabled }}
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: rulebricks-hps
+  namespace: rulebricks
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: rulebricks-hps
+  minReplicas: {{ .Values.app.autoscaling.minReplicas }}
+  maxReplicas: {{ .Values.app.autoscaling.maxReplicas }}
+  metrics:
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: {{ .Values.app.autoscaling.targetCPUUtilizationPercentage }}
+    - type: Resource
+      resource:
+        name: memory
+        target:
+          type: Utilization
+          averageUtilization: {{ .Values.app.autoscaling.targetMemoryUtilizationPercentage }}
+  behavior:
+    scaleUp:
+      stabilizationWindowSeconds: {{ .Values.app.autoscaling.behavior.scaleUp.stabilizationWindowSeconds }}
+      policies:
+      {{- range .Values.app.autoscaling.behavior.scaleUp.policies }}
+      - type: {{ .type }}
+        value: {{ .value }}
+        periodSeconds: {{ .periodSeconds }}
+      {{- end }}
+    scaleDown:
+      stabilizationWindowSeconds: {{ .Values.app.autoscaling.behavior.scaleDown.stabilizationWindowSeconds }}
+      policies:
+      {{- range .Values.app.autoscaling.behavior.scaleDown.policies }}
+      - type: {{ .type }}
+        value: {{ .value }}
+        periodSeconds: {{ .periodSeconds }}
+      {{- end }}
+{{- end }}

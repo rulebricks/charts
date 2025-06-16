@@ -1,0 +1,52 @@
+{{- if and .Values.hps .Values.hps.enabled }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: rulebricks-hps
+  namespace: rulebricks
+spec:
+  selector:
+    matchLabels:
+      app: rulebricks-hps
+  template:
+    metadata:
+      labels:
+        app: rulebricks-hps
+    spec:
+      imagePullSecrets:
+        - name: regcred
+      containers:
+        - name: rulebricks-hps
+          image: {{ .Values.hps.image.repository }}:latest
+          imagePullPolicy: {{ .Values.hps.image.pullPolicy }}
+          ports:
+            - name: http
+              containerPort: 3000
+              protocol: TCP
+          resources:
+            requests:
+              cpu: {{ .Values.app.resources.requests.cpu | default "250m" }}
+              memory: {{ .Values.app.resources.requests.memory | default "256Mi" }}
+            limits:
+              cpu: {{ .Values.app.resources.limits.cpu | default "1000m" }}
+              memory: {{ .Values.app.resources.limits.memory | default "1Gi" }}
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 3000
+            initialDelaySeconds: {{ .Values.app.livenessProbe.initialDelaySeconds }}
+            periodSeconds: {{ .Values.app.livenessProbe.periodSeconds }}
+            timeoutSeconds: {{ .Values.app.livenessProbe.timeoutSeconds }}
+            failureThreshold: {{ .Values.app.livenessProbe.failureThreshold }}
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 3000
+            initialDelaySeconds: {{ .Values.app.readinessProbe.initialDelaySeconds }}
+            periodSeconds: {{ .Values.app.readinessProbe.periodSeconds }}
+            timeoutSeconds: {{ .Values.app.readinessProbe.timeoutSeconds }}
+            failureThreshold: {{ .Values.app.readinessProbe.failureThreshold }}
+          envFrom:
+            - configMapRef:
+                name: app-config
+{{- end }}

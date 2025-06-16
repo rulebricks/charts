@@ -1,0 +1,48 @@
+apiVersion: v2
+name: rulebricks
+description: Complete Rulebricks deployment package including application and database components
+type: application
+version: 1.0.0
+appVersion: "1.0.0"
+
+keywords:
+  - rulebricks
+  - supabase
+  - private-deployment
+
+home: https://rulebricks.com
+sources:
+  - https://github.com/rulebricks/rulebricks
+
+maintainers:
+  - name: Rulebricks
+    email: support@rulebricks.com
+    url: https://rulebricks.com
+
+icon: https://d1zic6dm9txw4h.cloudfront.net/rulebricks-docs-assets/static/images/application/logo.png
+
+dependencies:
+  - name: rulebricks
+    version: "1.0.0"
+    tags:
+      - application
+
+  - name: supabase
+    version: "1.0.0"
+    tags:
+      - database
+
+  - name: traefik
+    version: "~26.0.0"
+    repository: "https://helm.traefik.io/traefik"
+    condition: traefik.enabled
+    tags:
+      - ingress
+
+annotations:
+  # Chart release annotations
+  artifacthub.io/changes: |
+    - kind: added
+      description: Initial release of consolidated Rulebricks deployment chart
+  artifacthub.io/containsSecurityUpdates: "false"
+  artifacthub.io/prerelease: "false"

@@ -1,0 +1,28 @@
+{{- $host0 := index .Values.ingress.hosts 0 -}}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: app-config
+  namespace: {{ .Release.Namespace }}
+data:
+  {{- $protocol := ternary "https" "http" .Values.app.tlsEnabled }}
+  {{- $routerEntrypoint := ternary "websecure" "web" .Values.app.tlsEnabled }}
+  PROTOCOL: {{ $protocol | quote }}
+  DOMAIN_NAME: {{ $host0.host | quote }}
+  ROUTER_ENTRYPOINT: {{ $routerEntrypoint | quote }}
+  SUPABASE_PUBLIC_KEY: {{ .Values.app.supabaseAnonKey | default "" | quote }}
+  SUPABASE_SECRET_KEY: {{ .Values.app.supabaseServiceKey | default "" | quote }}
+  SUPABASE_URL: {{ .Values.app.supabaseUrl | default "" | quote }}
+  NEXT_PUBLIC_EMAIL: {{ .Values.app.email | default "" | quote }}
+  NEXT_PUBLIC_PROTOCOL: {{ $protocol | quote }}
+  NEXT_PUBLIC_DOMAIN_NAME: {{ $host0.host | quote }}
+  NEXT_PUBLIC_SUPABASE_URL: {{ .Values.app.supabaseUrl | default "" | quote }}
+  NEXT_PUBLIC_SUPABASE_PUBLIC_KEY: {{ .Values.app.supabaseAnonKey | default "" | quote }}
+  SELF_HOSTED: "1"
+  NEXT_PUBLIC_SELF_HOSTED: "1"
+  NEXT_PUBLIC_SANITY_PROJECT_ID: "0tthc473"
+  SANITY_PROJECT_ID: "0tthc473"
+  SANITY_API_DATASET: "production"
+  KV_REST_API_URL: {{ printf "http://serverless-redis-http.%s" .Release.Namespace | quote }}
+  KV_REST_API_TOKEN: "local_redis"
+  NODE_OPTIONS: "--dns-result-order=ipv4first"

@@ -1,0 +1,59 @@
+ingressClass:
+  enabled: true
+  isDefaultClass: true
+
+service:
+  type: LoadBalancer
+
+ports:
+  web:
+    port: 8000 # Changed from 80
+    expose:
+      enabled: true
+      port: 80
+    exposedPort: 80
+    protocol: TCP
+  websecure:
+    enabled: false
+  traefik:
+    port: 9000
+    expose:
+      enabled: true
+      port: 9000
+    protocol: TCP
+  metrics:
+    port: 9100
+    expose:
+      enabled: true
+      port: 9100
+    protocol: TCP
+
+additionalArguments:
+  - "--entrypoints.web.http.redirections.entryPoint=false"
+  - "--entrypoints.web.http.redirections.entrypoint.to=:8000"
+  - "--entrypoints.web.http.redirections.entrypoint.scheme=http"
+
+providers:
+  kubernetesCRD:
+    enabled: true
+  kubernetesIngress:
+    enabled: true
+
+logs:
+  general:
+    level: DEBUG
+  access:
+    enabled: true
+
+# Explicitly disable SSL
+ssl:
+  enabled: false
+  enforced: false
+
+# Disable metrics and dashboard for simplicity
+metrics:
+  prometheus:
+    enabled: false
+
+api:
+  dashboard: false

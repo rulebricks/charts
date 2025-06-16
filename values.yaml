@@ -1,0 +1,254 @@
+# Global values shared across all subcharts
+global:
+  # Domain configuration
+  domain: ""
+  email: ""
+  
+  # Database configuration
+  database:
+    type: "self-hosted" # Options: self-hosted, managed, external
+    provider: "" # For managed: supabase-cloud, For external: postgres
+    
+  # Security settings
+  security:
+    network:
+      allowedIPs: []
+    authentication:
+      oauth:
+        enabled: false
+        providers: []
+  
+  # Version tracking
+  version: "1.0.0"
+  
+  # Image pull secrets (shared across subcharts)
+  imagePullSecrets: []
+
+# Traefik ingress controller configuration
+traefik:
+  enabled: true
+  namespace: traefik
+  
+  # Service configuration
+  service:
+    type: LoadBalancer
+    annotations: {}
+  
+  # Enable dashboard
+  ingressRoute:
+    dashboard:
+      enabled: false
+  
+  # Global arguments
+  globalArguments:
+    - "--global.sendanonymoususage=false"
+    - "--api.insecure=false"
+    - "--log.level=INFO"
+  
+  # Additional arguments
+  additionalArguments:
+    - "--entrypoints.web.address=:80"
+    - "--entrypoints.websecure.address=:443"
+    - "--entrypoints.web.http.redirections.entrypoint.to=websecure"
+    - "--entrypoints.web.http.redirections.entrypoint.scheme=https"
+  
+  # Ports configuration
+  ports:
+    web:
+      port: 8000
+      expose: true
+      exposedPort: 80
+      protocol: TCP
+    websecure:
+      port: 8443
+      expose: true
+      exposedPort: 443
+      protocol: TCP
+      tls:
+        enabled: true
+  
+  # TLS configuration (updated after DNS verification)
+  tls:
+    enabled: false
+    certResolver: ""
+    domains: []
+
+# Rulebricks application configuration
+rulebricks-app:
+  enabled: true
+  
+  # Application settings
+  app:
+    replicas: 2
+    
+    # Environment configuration
+    tlsEnabled: true
+    nextPublicSelfHosted: "1"
+    
+    # License configuration
+    licenseKey: ""
+    
+    # Supabase connection (populated automatically based on database.type)
+    supabaseUrl: ""
+    supabaseAnonKey: ""
+    supabaseServiceKey: ""
+    
+    # Email configuration
+    emailProvider: "smtp" # Options: smtp, resend, sendgrid, ses
+    emailFrom: "noreply@example.com"
+    emailFromName: "Rulebricks"
+    
+    # Resource limits
+    resources:
+      requests:
+        memory: "512Mi"
+        cpu: "250m"
+      limits:
+        memory: "1Gi"
+        cpu: "1000m"
+    
+    # Autoscaling
+    autoscaling:
+      enabled: true
+      minReplicas: 2
+      maxReplicas: 10
+      targetCPUUtilizationPercentage: 80
+      targetMemoryUtilizationPercentage: 80
+  
+  # Image configuration
+  image:
+    repository: rulebricks/rulebricks
+    tag: latest
+    pullPolicy: Always
+  
+  # Image pull credentials
+  imageCredentials:
+    registry: https://index.docker.io/v1/
+    username: rulebricks
+    password: "" # Docker PAT token
+  
+  # Ingress configuration
+  ingress:
+    enabled: true
+    className: traefik
+    annotations: {}
+    hosts: []
+    tls: []
+  
+  # Redis dependency
+  redis:
+    enabled: true
+    architecture: standalone
+    auth:
+      enabled: false
+    master:
+      persistence:
+        enabled: true
+        size: 8Gi
+
+    repository: rulebricks/rulebricks
+    tag: latest
+
+# Supabase configuration
+supabase:
+  enabled: true
+  
+  # Database configuration
+  database:
+    # For self-hosted
+    host: ""
+    port: 5432
+    name: postgres
+    username: postgres
+    password: "" # Auto-generated if empty
+    
+    # For external database
+    external:
+      enabled: false
+      url: ""
+  
+  # Supabase services configuration
+  auth:
+    enabled: true
+    baseUrl: ""
+    siteUrl: ""
+    
+  studio:
+    enabled: true
+    
+  storage:
+    enabled: true
+    
+  realtime:
+    enabled: true
+    
+  meta:
+    enabled: true
+    
+  vector:
+    enabled: true
+    
+  kong:
+    enabled: true
+    
+  analytics:
+    enabled: false
+  
+  # Resource configuration
+  resources:
+    postgres:
+      requests:
+        memory: "256Mi"
+        cpu: "250m"
+      limits:
+        memory: "1Gi"
+        cpu: "1000m"
+    
+    auth:
+      requests:
+        memory: "128Mi"
+        cpu: "100m"
+      limits:
+        memory: "256Mi"
+        cpu: "200m"
+  
+  # Persistence
+  persistence:
+    enabled: true
+    size: 10Gi
+    storageClass: ""
+
+# Monitoring stack configuration
+monitoring:
+  enabled: false
+  
+  prometheus:
+    enabled: false
+    namespace: monitoring
+    retention: 30d
+    storage:
+      size: 50Gi
+    
+  grafana:
+    enabled: false
+    adminPassword: "" # Auto-generated if empty
+    
+  alertmanager:
+    enabled: false
+
+# Advanced configuration
+advanced:
+  # Custom annotations for all resources
+  annotations: {}
+  
+  # Custom labels for all resources
+  labels: {}
+  
+  # Node selector for pod assignment
+  nodeSelector: {}
+  
+  # Tolerations for pod assignment
+  tolerations: []
+  
+  # Affinity rules
+  affinity: {}

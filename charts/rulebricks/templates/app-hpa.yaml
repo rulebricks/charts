@@ -1,0 +1,36 @@
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: rulebricks-hpa
+  namespace: rulebricks
+  annotations:
+    description: "Automatically scales the rule engine based on request load and resource usage"
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: rulebricks-app
+  minReplicas: 1
+  maxReplicas: 2
+  behavior:
+    scaleUp:
+      stabilizationWindowSeconds: {{ .Values.app.autoscaling.behavior.scaleUp.stabilizationWindowSeconds }}
+      policies:
+        {{- toYaml .Values.app.autoscaling.behavior.scaleUp.policies | nindent 8 }}
+    scaleDown:
+      stabilizationWindowSeconds: {{ .Values.app.autoscaling.behavior.scaleDown.stabilizationWindowSeconds }}
+      policies:
+        {{- toYaml .Values.app.autoscaling.behavior.scaleDown.policies | nindent 8 }}
+  metrics:
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: {{ .Values.app.autoscaling.targetCPUUtilizationPercentage }} # Lower threshold for CPU-light Node.js
+    - type: Resource
+      resource:
+        name: memory
+        target:
+          type: Utilization
+          averageUtilization: {{ .Values.app.autoscaling.targetMemoryUtilizationPercentage }} # Memory utilization target

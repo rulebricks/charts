@@ -1,0 +1,128 @@
+service:
+  type: LoadBalancer
+
+ports:
+  web:
+    port: 8000
+    expose:
+      enabled: true
+      port: 80
+    exposedPort: 80
+    protocol: TCP
+  websecure:
+    port: 8443
+    expose:
+      enabled: true
+      port: 443
+    exposedPort: 443
+    protocol: TCP
+    tls:
+      enabled: true
+      certResolver: "le"
+      domains:
+        - main: ""
+  traefik:
+    port: 9000
+    expose:
+      enabled: true
+      port: 9000
+    protocol: TCP
+  metrics:
+    port: 9100
+    expose:
+      enabled: true
+      port: 9100
+    protocol: TCP
+
+additionalArguments:
+  - "--api.insecure=false"
+  - "--api.dashboard=true"
+  - "--log.level=DEBUG"
+  - "--accesslog=true"
+  - "--entrypoints.metrics.address=:9100"
+  - "--entrypoints.traefik.address=:9000"
+  - "--entrypoints.web.address=:8000"
+  - "--entrypoints.websecure.address=:8443"
+  - "--entrypoints.web.http.redirections.entryPoint.to=websecure"
+  - "--entrypoints.web.http.redirections.entryPoint.scheme=https"
+  # These next three will be overridden by --set
+  - "--certificatesresolvers.le.acme.email=default@example.com"
+  - "--certificatesresolvers.le.acme.storage=/data/acme.json"
+  - "--certificatesresolvers.le.acme.tlschallenge=true"
+
+# Update the init container to be more explicit about permissions
+initContainers:
+  - name: setup-acme
+    image: busybox
+    command:
+      - /bin/sh
+      - -c
+      - |
+        rm -f /data/acme.json && \
+        touch /data/acme.json && \
+        chmod 600 /data/acme.json && \
+        chown 65532:65532 /data/acme.json && \
+        echo "Verifying permissions:" && \
+        ls -la /data/acme.json && \
+        echo "Setting more restrictive umask:" && \
+        umask 077
+    volumeMounts:
+      - name: data
+        mountPath: /data
+    securityContext:
+      runAsNonRoot: false
+      runAsUser: 0
+
+# Make sure persistence is properly configured
+persistence:
+  enabled: true
+  path: /data
+  size: 128Mi
+  accessMode: ReadWriteOnce
+  storageClass: "gp2"
+  annotations:
+    # Add annotations to help with permission management
+    kubernetes.io/pvc-protection: "true"
+    helm.sh/resource-policy: keep
+
+# Security contexts
+podSecurityContext:
+  fsGroup: 65532
+
+securityContext:
+  capabilities:
+    drop: [ALL]
+  readOnlyRootFilesystem: true
+  runAsGroup: 65532
+  runAsNonRoot: true
+  runAsUser: 65532
+
+# Configure providers
+providers:
+  kubernetesCRD:
+    enabled: true
+  kubernetesIngress:
+    enabled: true
+    publishedService:
+      enabled: true
+
+# Enable metrics
+metrics:
+  prometheus:
+    enabled: true
+    serviceMonitor:
+      enabled: false
+
+# Global arguments
+globalArguments:
+  - "--global.checknewversion"
+
+# Enable API and ping
+api:
+  dashboard: true
+  insecure: false
+
+ping:
+  enabled: true
+  manualRouting: true
+  entryPoint: "traefik"

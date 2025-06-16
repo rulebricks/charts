@@ -1,0 +1,138 @@
+#  Prefix Software, Inc. Confidential
+#  __________________________________
+#
+#   Copyright (c) 2025 Prefix Software, Inc. All Rights Reserved.
+#
+#  NOTICE:  All information contained herein is, and remains
+#  the property of Prefix Software, Inc. and its suppliers, if any.
+#  The intellectual and technical concepts contained herein are
+#  proprietary to Prefix Software, Inc. and its suppliers and may be
+#  covered by U.S. and Foreign Patents, patents in process,
+#  and are protected by trade secret or copyright law. Dissemination
+#  of this information or reproduction of this material is strictly
+#  forbidden unless prior written permission is obtained from
+#  Prefix Software, Inc.
+#
+#  __________________________________
+
+app:
+  image:
+    repository: index.docker.io/rulebricks/app
+    pullPolicy: IfNotPresent
+  resources:
+    requests:
+      cpu: "512m"
+      memory: "512Mi"
+    limits:
+      cpu: "1150m"
+      memory: "1Gi"
+  autoscaling:
+    enabled: true
+    minReplicas: 1
+    maxReplicas: 6
+    targetCPUUtilizationPercentage: 50
+    targetMemoryUtilizationPercentage: 80
+    behavior:
+      scaleUp:
+        stabilizationWindowSeconds: 0 # Instant response to traffic spikes
+        policies:
+          - type: Percent
+            value: 100
+            periodSeconds: 10
+      scaleDown:
+        stabilizationWindowSeconds: 30
+        policies:
+          - type: Pods
+            value: 1
+            periodSeconds: 5
+  livenessProbe:
+    httpGet:
+      path: /
+      port: 3000
+    initialDelaySeconds: 3
+    periodSeconds: 5
+    timeoutSeconds: 3
+    failureThreshold: 3
+  readinessProbe:
+    httpGet:
+      path: /api/health
+      port: 3000
+    initialDelaySeconds: 3
+    periodSeconds: 5
+    timeoutSeconds: 3
+    failureThreshold: 3
+  tlsEnabled: true
+  email: "support@rulebricks.com"
+  licenseKey: "evaluation"
+  supabaseUrl: ""
+  supabaseServiceKey: ""
+  supabaseAnonKey: ""
+
+hps:
+  enabled: true
+  image:
+    repository: index.docker.io/rulebricks/hps
+    pullPolicy: Always
+
+redis:
+  tag: "7.2"
+  persistence:
+    enabled: true
+    size: "4Gi"
+    storageClass: "gp2"
+  resources:
+    requests:
+      cpu: "200m"
+      memory: "256Mi"
+    limits:
+      cpu: "500m"
+      memory: "4Gi"
+
+ingress:
+  enabled: true
+  className: traefik
+  annotations:
+    kubernetes.io/ingress.class: traefik
+    traefik.ingress.kubernetes.io/router.entrypoints: websecure
+    traefik.ingress.kubernetes.io/router.tls: "true"
+    traefik.ingress.kubernetes.io/router.tls.certresolver: "le" # Add this
+    # CORS configuration using Traefik annotations
+    traefik.ingress.kubernetes.io/headers.customrequestheaders.Access-Control-Allow-Methods: "GET,OPTIONS,PUT,POST,DELETE,PATCH"
+    traefik.ingress.kubernetes.io/headers.customrequestheaders.Access-Control-Allow-Origin: "*"
+    traefik.ingress.kubernetes.io/headers.customrequestheaders.Access-Control-Allow-Headers: "*"
+  hosts:
+    - host: "localhost"
+      paths:
+        - path: /
+          pathType: Prefix
+          backend:
+            service:
+              name: rulebricks-rulebricks-chart
+              port:
+                number: 80
+
+imageCredentials:
+  name: regcred
+  registry: index.docker.io
+  username: rulebricks
+  password: ""
+
+service:
+  type: ClusterIP
+  port: 80
+
+serviceAccount:
+  create: true
+  automount: true
+  annotations: {}
+  name: ""
+
+volumes: []
+volumeMounts: []
+
+nodeSelector: {}
+tolerations: []
+affinity: {}
+
+podSecurityContext: {}
+securityContext: {}
