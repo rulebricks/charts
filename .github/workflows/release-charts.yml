@@ -4,8 +4,6 @@ on:
   push:
     branches:
       - main
-    paths:
-      - 'charts/**'
   workflow_dispatch:
 
 jobs:
@@ -31,29 +29,21 @@ jobs:
         with:
           version: 'v3.13.0'
 
-      - name: Get Current Version
-        id: current_version
-        run: |
-          # Get the latest tag or use 0.0.0
-          LATEST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "v0.0.0")
-          CURRENT_VERSION=${LATEST_TAG#v}
-          echo "CURRENT_VERSION=${CURRENT_VERSION}" >> $GITHUB_OUTPUT
-          echo "📌 Current version: ${CURRENT_VERSION}"
-
-      - name: Calculate Next Version
+      - name: Get next chart version
         id: next_version
         run: |
-          CURRENT="${{ steps.current_version.outputs.CURRENT_VERSION }}"
+          # Get the latest release from charts repository
+          LATEST_RELEASE=$(curl -s https://api.github.com/repos/rulebricks/charts/releases/latest | jq -r '.tag_name // "v0.0.0"')
+          CURRENT_VERSION=${LATEST_RELEASE#v}
 
-          # Split version into parts
-          IFS='.' read -r MAJOR MINOR PATCH <<< "$CURRENT"
-
-          # Increment patch version
+          # Parse and increment version
+          IFS='.' read -r MAJOR MINOR PATCH <<< "$CURRENT_VERSION"
           PATCH=$((PATCH + 1))
-
           NEXT_VERSION="${MAJOR}.${MINOR}.${PATCH}"
+
           echo "NEXT_VERSION=${NEXT_VERSION}" >> $GITHUB_OUTPUT
-          echo "📈 Next version: ${NEXT_VERSION}"
+          echo "📌 Current chart version: ${CURRENT_VERSION}"
+          echo "📈 Next chart version: ${NEXT_VERSION}"
 
       - name: Update Chart Versions
         run: |
