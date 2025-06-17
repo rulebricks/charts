@@ -36,14 +36,21 @@ jobs:
           LATEST_RELEASE=$(curl -s https://api.github.com/repos/rulebricks/charts/releases/latest | jq -r '.tag_name // "v0.0.0"')
           CURRENT_VERSION=${LATEST_RELEASE#v}
 
-          # Parse and increment version
-          IFS='.' read -r MAJOR MINOR PATCH <<< "$CURRENT_VERSION"
-          PATCH=$((PATCH + 1))
-          NEXT_VERSION="${MAJOR}.${MINOR}.${PATCH}"
+          # Check if triggered by workflow_dispatch
+          if [ "${{ github.event_name }}" == "workflow_dispatch" ]; then
+            # Parse and increment version
+            IFS='.' read -r MAJOR MINOR PATCH <<< "$CURRENT_VERSION"
+            PATCH=$((PATCH + 1))
+            NEXT_VERSION="${MAJOR}.${MINOR}.${PATCH}"
+            echo "📌 Current chart version: ${CURRENT_VERSION}"
+            echo "📈 Next chart version: ${NEXT_VERSION}"
+          else
+            # Use current version without incrementing
+            NEXT_VERSION="${CURRENT_VERSION}"
+            echo "📌 Using existing chart version: ${NEXT_VERSION}"
+          fi
 
           echo "NEXT_VERSION=${NEXT_VERSION}" >> $GITHUB_OUTPUT
-          echo "📌 Current chart version: ${CURRENT_VERSION}"
-          echo "📈 Next chart version: ${NEXT_VERSION}"
 
       - name: Update Chart Versions
         run: |
@@ -112,12 +119,23 @@ jobs:
           Verify downloaded files with the provided .sha256 files.
           EOF
 
-          # Create GitHub release
-          gh release create "v${VERSION}" \
-            --title "Charts v${VERSION}" \
-            --notes-file release-notes.md \
-            build/*.tgz \
-            build/*.sha256
+          # Create or update GitHub release
+          if [ "${{ github.event_name }}" == "workflow_dispatch" ]; then
+            # Create new release for workflow_dispatch
+            gh release create "v${VERSION}" \
+              --title "Charts v${VERSION}" \
+              --notes-file release-notes.md \
+              build/*.tgz \
+              build/*.sha256
+          else
+            # Delete existing release and recreate for push events
+            gh release delete "v${VERSION}" --yes || true
+            gh release create "v${VERSION}" \
+              --title "Charts v${VERSION}" \
+              --notes-file release-notes.md \
+              build/*.tgz \
+              build/*.sha256
+          fi
 
       - name: Upload Artifacts
         uses: actions/upload-artifact@v4
@@ -142,7 +160,12 @@ jobs:
           helm repo index repo --url "https://github.com/rulebricks/charts/releases/download/v${VERSION}"
 
           # Upload index.yaml to release
-          gh release upload "v${VERSION}" repo/index.yaml --clobber
+          if [ "${{ github.event_name }}" == "workflow_dispatch" ]; then
+            gh release upload "v${VERSION}" repo/index.yaml --clobber
+          else
+            # For push events, the index.yaml is already included in the recreated release
+            echo "Index.yaml already included in recreated release"
+          fi
 
       - name: Summary
         run: |
