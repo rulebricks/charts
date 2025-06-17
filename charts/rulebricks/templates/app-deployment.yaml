@@ -2,7 +2,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: rulebricks-app
-  namespace: rulebricks
+  namespace: {{ .Release.Namespace }}
 spec:
   selector:
     matchLabels:

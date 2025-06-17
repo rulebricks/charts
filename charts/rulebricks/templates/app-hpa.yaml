@@ -2,7 +2,7 @@ apiVersion: autoscaling/v2
 kind: HorizontalPodAutoscaler
 metadata:
   name: rulebricks-hpa
-  namespace: rulebricks
+  namespace: {{ .Release.Namespace }}
   annotations:
     description: "Automatically scales the rule engine based on request load and resource usage"
 spec:

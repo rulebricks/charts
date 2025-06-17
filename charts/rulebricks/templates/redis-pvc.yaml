@@ -2,7 +2,7 @@ apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
   name: redis-data
-  namespace: rulebricks
+  namespace: {{ .Release.Namespace }}
 spec:
   accessModes:
     - ReadWriteOnce
