@@ -26,3 +26,28 @@ data:
   KV_REST_API_URL: {{ printf "http://serverless-redis-http.%s" .Release.Namespace | quote }}
   KV_REST_API_TOKEN: "local_redis"
   NODE_OPTIONS: "--dns-result-order=ipv4first"
+  {{- if .Values.app.smtp }}
+  SMTP_HOST: {{ .Values.app.smtp.host | default "" | quote }}
+  SMTP_PORT: {{ .Values.app.smtp.port | default "" | quote }}
+  SMTP_USER: {{ .Values.app.smtp.user | default "" | quote }}
+  SMTP_PASS: {{ .Values.app.smtp.pass | default "" | quote }}
+  SMTP_FROM: {{ .Values.app.smtp.from | default "" | quote }}
+  SMTP_FROM_NAME: {{ .Values.app.smtp.fromName | default "" | quote }}
+  {{- end }}
+  {{- if .Values.app.ai }}
+  {{- if .Values.app.ai.enabled }}
+  OPENAI_API_KEY: {{ .Values.app.ai.openaiApiKey | default "" | quote }}
+  {{- end }}
+  {{- end }}
+  {{- if .Values.app.logging }}
+  {{- if .Values.app.logging.enabled }}
+  {{- if eq .Values.app.logging.provider "betterstack" }}
+  NEXT_PUBLIC_LOGTAIL_ENABLED: "1"
+  LOGTAIL_SOURCE_KEY: {{ .Values.app.logging.logtailSourceKey | default "" | quote }}
+  LOGTAIL_SOURCE_ID: {{ .Values.app.logging.logtailSourceId | default "" | quote }}
+  {{- else if eq .Values.app.logging.provider "kafka" }}
+  KAFKA_BROKERS: {{ .Values.app.logging.kafkaBrokers | default "" | quote }}
+  KAFKA_TOPIC: {{ .Values.app.logging.kafkaTopic | default "logs" | quote }}
+  {{- end }}
+  {{- end }}
+  {{- end }}
