@@ -29,14 +29,7 @@ spec:
               cpu: {{ .Values.hps.workers.resources.limits.cpu | default "500m" }}
               memory: {{ .Values.hps.workers.resources.limits.memory | default "512Mi" }}
           # Workers don't need health checks on HTTP - they consume from Kafka
-          livenessProbe:
-            exec:
-              command:
-                - /bin/sh
-                - -c
-                - "ps aux | grep -v grep | grep -q 'generic-worker.js' || exit 1"
-            initialDelaySeconds: 30
-            periodSeconds: 30
+          # Workers will be restarted by Kubernetes if they crash
           envFrom:
             - configMapRef:
                 name: app-config
