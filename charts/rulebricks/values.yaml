@@ -73,7 +73,7 @@ hps:
   image:
     repository: index.docker.io/rulebricks/hps
     pullPolicy: Always
-  
+
   resources:
     requests:
       cpu: "250m"
@@ -81,6 +81,26 @@ hps:
     limits:
       cpu: "1000m"
       memory: "1Gi"
+
+  autoscaling:
+    enabled: true
+    minReplicas: 1
+    maxReplicas: 6
+    targetCPUUtilizationPercentage: 50
+    targetMemoryUtilizationPercentage: 80
+    behavior:
+      scaleUp:
+        stabilizationWindowSeconds: 0 # Instant response to traffic spikes
+        policies:
+          - type: Percent
+            value: 100
+            periodSeconds: 10
+      scaleDown:
+        stabilizationWindowSeconds: 30
+        policies:
+          - type: Pods
+            value: 1
+            periodSeconds: 5
 
   workers:
     enabled: true

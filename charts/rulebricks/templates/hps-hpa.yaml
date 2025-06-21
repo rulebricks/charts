@@ -9,34 +9,34 @@ spec:
     apiVersion: apps/v1
     kind: Deployment
     name: rulebricks-hps
-  minReplicas: {{ .Values.app.autoscaling.minReplicas }}
-  maxReplicas: {{ .Values.app.autoscaling.maxReplicas }}
+  minReplicas: {{ .Values.hps.autoscaling.minReplicas }}
+  maxReplicas: {{ .Values.hps.autoscaling.maxReplicas }}
   metrics:
     - type: Resource
       resource:
         name: cpu
         target:
           type: Utilization
-          averageUtilization: {{ .Values.app.autoscaling.targetCPUUtilizationPercentage }}
+          averageUtilization: {{ .Values.hps.autoscaling.targetCPUUtilizationPercentage }}
     - type: Resource
       resource:
         name: memory
         target:
           type: Utilization
-          averageUtilization: {{ .Values.app.autoscaling.targetMemoryUtilizationPercentage }}
+          averageUtilization: {{ .Values.hps.autoscaling.targetMemoryUtilizationPercentage }}
   behavior:
     scaleUp:
-      stabilizationWindowSeconds: {{ .Values.app.autoscaling.behavior.scaleUp.stabilizationWindowSeconds }}
+      stabilizationWindowSeconds: {{ .Values.hps.autoscaling.behavior.scaleUp.stabilizationWindowSeconds }}
       policies:
-      {{- range .Values.app.autoscaling.behavior.scaleUp.policies }}
+      {{- range .Values.hps.autoscaling.behavior.scaleUp.policies }}
       - type: {{ .type }}
         value: {{ .value }}
         periodSeconds: {{ .periodSeconds }}
       {{- end }}
     scaleDown:
-      stabilizationWindowSeconds: {{ .Values.app.autoscaling.behavior.scaleDown.stabilizationWindowSeconds }}
+      stabilizationWindowSeconds: {{ .Values.hps.autoscaling.behavior.scaleDown.stabilizationWindowSeconds }}
       policies:
-      {{- range .Values.app.autoscaling.behavior.scaleDown.policies }}
+      {{- range .Values.hps.autoscaling.behavior.scaleDown.policies }}
       - type: {{ .type }}
         value: {{ .value }}
         periodSeconds: {{ .periodSeconds }}
