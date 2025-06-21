@@ -1,0 +1,33 @@
+{{- if and .Values.hps .Values.hps.enabled .Values.hps.workers.enabled .Values.hps.workers.keda.enabled }}
+apiVersion: keda.sh/v1alpha1
+kind: ScaledObject
+metadata:
+  name: rulebricks-hps-worker-scaler
+  namespace: {{ .Release.Namespace }}
+spec:
+  scaleTargetRef:
+    name: rulebricks-hps-worker
+  minReplicaCount: {{ .Values.hps.workers.keda.minReplicaCount | default 3 }}
+  maxReplicaCount: {{ .Values.hps.workers.keda.maxReplicaCount | default 50 }}
+  pollingInterval: {{ .Values.hps.workers.keda.pollingInterval | default 15 }}  # Check interval in seconds
+  cooldownPeriod: {{ .Values.hps.workers.keda.cooldownPeriod | default 300 }}  # Wait before scaling down in seconds
+  triggers:
+  # Primary trigger: Kafka lag
+  - type: kafka
+    metadata:
+      bootstrapServers: {{ required "Kafka brokers required for KEDA" .Values.app.logging.kafkaBrokers }}
+      consumerGroup: generic-workers
+      topic: bulk-solve,flows,parallel-solve  # All high-volume topics
+      lagThreshold: "{{ .Values.hps.workers.keda.lagThreshold | default 100 }}"
+      offsetResetPolicy: latest
+  # Backup trigger: CPU (in case Kafka metrics fail)
+  - type: cpu
+    metadata:
+      type: Utilization
+      value: "{{ .Values.hps.workers.keda.cpuThreshold | default 75 }}"
+  # Optional: Memory trigger
+  - type: memory
+    metadata:
+      type: Utilization
+      value: "{{ .Values.hps.workers.keda.memoryThreshold | default 80 }}"
+{{- end }}

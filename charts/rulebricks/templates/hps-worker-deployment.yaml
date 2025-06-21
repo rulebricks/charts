@@ -1,0 +1,50 @@
+{{- if and .Values.hps .Values.hps.enabled .Values.hps.workers.enabled }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: rulebricks-hps-worker
+  namespace: {{ .Release.Namespace }}
+spec:
+  replicas: {{ .Values.hps.workers.replicas | default 3 }}
+  selector:
+    matchLabels:
+      app: rulebricks-hps-worker
+  template:
+    metadata:
+      labels:
+        app: rulebricks-hps-worker
+    spec:
+      imagePullSecrets:
+        - name: regcred
+      containers:
+        - name: generic-worker
+          # Use the generic-worker target from your multi-stage Dockerfile
+          image: {{ .Values.hps.image.repository }}:worker-latest
+          imagePullPolicy: {{ .Values.hps.image.pullPolicy }}
+          resources:
+            requests:
+              cpu: {{ .Values.hps.workers.resources.requests.cpu | default "100m" }}
+              memory: {{ .Values.hps.workers.resources.requests.memory | default "128Mi" }}
+            limits:
+              cpu: {{ .Values.hps.workers.resources.limits.cpu | default "500m" }}
+              memory: {{ .Values.hps.workers.resources.limits.memory | default "512Mi" }}
+          # Workers don't need health checks on HTTP - they consume from Kafka
+          livenessProbe:
+            exec:
+              command:
+                - /bin/sh
+                - -c
+                - "ps aux | grep -v grep | grep -q 'generic-worker.js' || exit 1"
+            initialDelaySeconds: 30
+            periodSeconds: 30
+          envFrom:
+            - configMapRef:
+                name: app-config
+          env:
+            # Optional: limit which topics this deployment handles
+            - name: WORKER_TOPICS
+              value: {{ .Values.hps.workers.topics | default "solve,bulk-solve,flows,parallel-solve" | quote }}
+            # Add any worker-specific overrides here
+            - name: NODE_ENV
+              value: "production"
+{{- end }}

@@ -25,6 +25,8 @@ data:
   SANITY_API_DATASET: "production"
   KV_REST_API_URL: {{ printf "http://serverless-redis-http.%s" .Release.Namespace | quote }}
   KV_REST_API_TOKEN: "local_redis"
+  NODE_ENV: "production"
+  ENVIRONMENT: "production"
   NODE_OPTIONS: "--dns-result-order=ipv4first"
   {{- if .Values.app.smtp }}
   SMTP_HOST: {{ .Values.app.smtp.host | default "" | quote }}
@@ -36,18 +38,15 @@ data:
   {{- end }}
   {{- if .Values.app.ai }}
   {{- if .Values.app.ai.enabled }}
+  NEXT_PUBLIC_AI_ENABLED: "1"
   OPENAI_API_KEY: {{ .Values.app.ai.openaiApiKey | default "" | quote }}
   {{- end }}
   {{- end }}
   {{- if .Values.app.logging }}
   {{- if .Values.app.logging.enabled }}
-  {{- if eq .Values.app.logging.provider "betterstack" }}
-  NEXT_PUBLIC_LOGTAIL_ENABLED: "1"
-  LOGTAIL_SOURCE_KEY: {{ .Values.app.logging.logtailSourceKey | default "" | quote }}
-  LOGTAIL_SOURCE_ID: {{ .Values.app.logging.logtailSourceId | default "" | quote }}
-  {{- else if eq .Values.app.logging.provider "kafka" }}
+  KAFKA_ENABLED: "1"
   KAFKA_BROKERS: {{ .Values.app.logging.kafkaBrokers | default "" | quote }}
   KAFKA_TOPIC: {{ .Values.app.logging.kafkaTopic | default "logs" | quote }}
-  {{- end }}
+  NEXT_PUBLIC_LOGGING_DESTINATION: {{ .Values.app.logging.loggingDestination | default "" | quote }}
   {{- end }}
   {{- end }}
