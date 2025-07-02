@@ -49,7 +49,7 @@ jobs:
             local attempt=1
 
             while [ $attempt -le $max_retries ]; do
-              echo "🔍 Attempt $attempt to fetch latest release..."
+              echo "🔍 Attempt $attempt to fetch latest release..." >&2
 
               RESPONSE=$(curl -s -w "\n%{http_code}" https://api.github.com/repos/rulebricks/charts/releases/latest)
               HTTP_CODE=$(echo "$RESPONSE" | tail -n1)
@@ -67,9 +67,9 @@ jobs:
                 return 0
               fi
 
-              echo "⚠️  Failed attempt $attempt (HTTP $HTTP_CODE)"
+              echo "⚠️  Failed attempt $attempt (HTTP $HTTP_CODE)" >&2
               if [ $attempt -lt $max_retries ]; then
-                echo "⏳ Retrying in $retry_delay seconds..."
+                echo "⏳ Retrying in $retry_delay seconds..." >&2
                 sleep $retry_delay
                 retry_delay=$((retry_delay * 2))
               fi
@@ -77,7 +77,7 @@ jobs:
               attempt=$((attempt + 1))
             done
 
-            echo "❌ Failed to fetch latest release after $max_retries attempts"
+            echo "❌ Failed to fetch latest release after $max_retries attempts" >&2
             return 1
           }
 
@@ -346,15 +346,16 @@ jobs:
 
           echo "## 🎉 Release Summary" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo "- **Version**: v${VERSION}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Version**: ${VERSION}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Tag**: v${VERSION}" >> $GITHUB_STEP_SUMMARY
           echo "- **Release URL**: https://github.com/rulebricks/charts/releases/tag/v${VERSION}" >> $GITHUB_STEP_SUMMARY
           echo "- **Triggered by**: ${{ github.event_name }}" >> $GITHUB_STEP_SUMMARY
           if [ -n "${{ github.event.inputs.version }}" ]; then
-            echo "- **Reason**: New application version available" >> $GITHUB_STEP_SUMMARY
+            echo "- **Version source**: Provided by app workflow" >> $GITHUB_STEP_SUMMARY
           elif [ "${{ github.event_name }}" == "push" ]; then
-            echo "- **Reason**: Charts/Infrastructure update" >> $GITHUB_STEP_SUMMARY
+            echo "- **Version source**: Rebuilt current version (infrastructure update)" >> $GITHUB_STEP_SUMMARY
           else
-            echo "- **Reason**: Manually updated" >> $GITHUB_STEP_SUMMARY
+            echo "- **Version source**: Auto-calculated (manual trigger)" >> $GITHUB_STEP_SUMMARY
           fi
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "### 📦 Artifacts" >> $GITHUB_STEP_SUMMARY
