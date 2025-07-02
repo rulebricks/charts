@@ -5,6 +5,16 @@ on:
     branches:
       - main
   workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version to release (e.g., 1.2.3)'
+        required: false
+        type: string
+      bump_type:
+        description: 'Type of version bump (major, minor, patch)'
+        required: false
+        type: string
+        default: 'patch'
 
 jobs:
   release:
@@ -32,25 +42,129 @@ jobs:
       - name: Get next chart version
         id: next_version
         run: |
-          # Get the latest release from charts repository
-          LATEST_RELEASE=$(curl -s https://api.github.com/repos/rulebricks/charts/releases/latest | jq -r '.tag_name // "v0.0.0"')
-          CURRENT_VERSION=${LATEST_RELEASE#v}
+          # Function to get latest release with retries
+          get_latest_release() {
+            local max_retries=5
+            local retry_delay=2
+            local attempt=1
 
-          # Check if triggered by workflow_dispatch
-          if [ "${{ github.event_name }}" == "workflow_dispatch" ]; then
-            # Parse and increment version
-            IFS='.' read -r MAJOR MINOR PATCH <<< "$CURRENT_VERSION"
-            PATCH=$((PATCH + 1))
-            NEXT_VERSION="${MAJOR}.${MINOR}.${PATCH}"
-            echo "📌 Current chart version: ${CURRENT_VERSION}"
-            echo "📈 Next chart version: ${NEXT_VERSION}"
-          else
-            # Use current version without incrementing
+            while [ $attempt -le $max_retries ]; do
+              echo "🔍 Attempt $attempt to fetch latest release..."
+
+              RESPONSE=$(curl -s -w "\n%{http_code}" https://api.github.com/repos/rulebricks/charts/releases/latest)
+              HTTP_CODE=$(echo "$RESPONSE" | tail -n1)
+              BODY=$(echo "$RESPONSE" | head -n-1)
+
+              if [ "$HTTP_CODE" = "200" ]; then
+                TAG_NAME=$(echo "$BODY" | jq -r '.tag_name // empty')
+                if [ -n "$TAG_NAME" ] && [ "$TAG_NAME" != "null" ]; then
+                  echo "$TAG_NAME"
+                  return 0
+                fi
+              elif [ "$HTTP_CODE" = "404" ]; then
+                # No releases yet
+                echo "v0.0.0"
+                return 0
+              fi
+
+              echo "⚠️  Failed attempt $attempt (HTTP $HTTP_CODE)"
+              if [ $attempt -lt $max_retries ]; then
+                echo "⏳ Retrying in $retry_delay seconds..."
+                sleep $retry_delay
+                retry_delay=$((retry_delay * 2))
+              fi
+
+              attempt=$((attempt + 1))
+            done
+
+            echo "❌ Failed to fetch latest release after $max_retries attempts"
+            return 1
+          }
+
+          # Determine workflow trigger type
+          echo "🎯 Workflow triggered by: ${{ github.event_name }}"
+
+          # Check if version was provided as input (from app workflow)
+          if [ -n "${{ github.event.inputs.version }}" ]; then
+            # Use provided version from app workflow
+            NEXT_VERSION="${{ github.event.inputs.version }}"
+            echo "📦 Using version provided by app workflow: ${NEXT_VERSION}"
+          elif [ "${{ github.event_name }}" == "push" ]; then
+            # Direct push to charts repo - rebuild current version without incrementing
+            echo "🔄 Direct repository update detected - rebuilding current version"
+
+            # Get latest release with retries
+            LATEST_RELEASE=$(get_latest_release)
+            if [ $? -ne 0 ]; then
+              echo "::error::Failed to get latest release after all retry attempts"
+              echo "❌ Cannot proceed without knowing the current version"
+              exit 1
+            fi
+
+            CURRENT_VERSION=${LATEST_RELEASE#v}
             NEXT_VERSION="${CURRENT_VERSION}"
-            echo "📌 Using existing chart version: ${NEXT_VERSION}"
+            echo "📌 Rebuilding charts for version: ${NEXT_VERSION}"
+            echo "ℹ️  Version number unchanged - updating chart contents only"
+          else
+            # Manual workflow_dispatch without version - allow version bump
+            echo "🚀 Manual workflow dispatch - calculating new version"
+
+            # Get latest release with retries
+            LATEST_RELEASE=$(get_latest_release)
+            if [ $? -ne 0 ]; then
+              echo "::error::Failed to get latest release after all retry attempts"
+              echo "❌ Cannot proceed without knowing the current version"
+              exit 1
+            fi
+
+            CURRENT_VERSION=${LATEST_RELEASE#v}
+            echo "📌 Current chart version: ${CURRENT_VERSION}"
+
+            # Parse version components
+            IFS='.' read -r MAJOR MINOR PATCH <<< "$CURRENT_VERSION"
+
+            # Ensure numeric values
+            MAJOR=${MAJOR:-0}
+            MINOR=${MINOR:-0}
+            PATCH=${PATCH:-0}
+
+            # Get bump type from input or default to patch
+            BUMP_TYPE="${{ github.event.inputs.bump_type || 'patch' }}"
+
+            # Increment based on bump type
+            case "$BUMP_TYPE" in
+              major)
+                MAJOR=$((MAJOR + 1))
+                MINOR=0
+                PATCH=0
+                ;;
+              minor)
+                MINOR=$((MINOR + 1))
+                PATCH=0
+                ;;
+              patch)
+                PATCH=$((PATCH + 1))
+                ;;
+            esac
+
+            NEXT_VERSION="${MAJOR}.${MINOR}.${PATCH}"
+            echo "📈 Next chart version: ${NEXT_VERSION} (bump type: ${BUMP_TYPE})"
           fi
 
           echo "NEXT_VERSION=${NEXT_VERSION}" >> $GITHUB_OUTPUT
+
+      - name: Validate version format
+        run: |
+          VERSION="${{ steps.next_version.outputs.NEXT_VERSION }}"
+
+          # Validate semantic version format
+          if ! echo "$VERSION" | grep -E '^[0-9]+\.[0-9]+\.[0-9]+$' > /dev/null; then
+            echo "::error::Invalid version format: $VERSION"
+            echo "Version must be in semantic version format (e.g., 1.2.3)"
+            exit 1
+          fi
+
+          echo "✅ Version format validated: $VERSION"
 
       - name: Update Chart Versions
         run: |
@@ -63,6 +177,13 @@ jobs:
           # Update supabase chart
           sed -i "s/^version:.*/version: ${VERSION}/" charts/supabase/Chart.yaml
           sed -i "s/^appVersion:.*/appVersion: \"${VERSION}\"/" charts/supabase/Chart.yaml
+
+          # Verify updates
+          echo "📋 Updated Chart versions:"
+          echo "Rulebricks:"
+          grep -E "^(version|appVersion):" charts/rulebricks/Chart.yaml
+          echo "Supabase:"
+          grep -E "^(version|appVersion):" charts/supabase/Chart.yaml
 
       - name: Package Charts
         run: |
@@ -119,22 +240,49 @@ jobs:
           Verify downloaded files with the provided .sha256 files.
           EOF
 
-          # Create or update GitHub release
-          if [ "${{ github.event_name }}" == "workflow_dispatch" ]; then
-            # Create new release for workflow_dispatch
-            gh release create "v${VERSION}" \
-              --title "Charts v${VERSION}" \
-              --notes-file release-notes.md \
-              build/*.tgz \
-              build/*.sha256
-          else
-            # Delete existing release and recreate for push events
-            gh release delete "v${VERSION}" --yes || true
-            gh release create "v${VERSION}" \
-              --title "Charts v${VERSION}" \
-              --notes-file release-notes.md \
-              build/*.tgz \
-              build/*.sha256
+          # Function to create release with retries
+          create_release() {
+            local max_retries=3
+            local retry_delay=2
+            local attempt=1
+
+            while [ $attempt -le $max_retries ]; do
+              echo "🚀 Attempt $attempt to create/update release..."
+
+              # Delete existing release if it exists
+              if gh release view "v${VERSION}" &>/dev/null; then
+                echo "🗑️  Deleting existing release v${VERSION}..."
+                gh release delete "v${VERSION}" --yes || true
+                sleep 2
+              fi
+
+              # Create new release
+              if gh release create "v${VERSION}" \
+                --title "Charts v${VERSION}" \
+                --notes-file release-notes.md \
+                build/*.tgz \
+                build/*.sha256; then
+                echo "✅ Successfully created release v${VERSION}"
+                return 0
+              fi
+
+              echo "⚠️  Failed attempt $attempt"
+              if [ $attempt -lt $max_retries ]; then
+                echo "⏳ Retrying in $retry_delay seconds..."
+                sleep $retry_delay
+                retry_delay=$((retry_delay * 2))
+              fi
+
+              attempt=$((attempt + 1))
+            done
+
+            echo "❌ Failed to create release after $max_retries attempts"
+            return 1
+          }
+
+          if ! create_release; then
+            echo "::error::Failed to create GitHub release"
+            exit 1
           fi
 
       - name: Upload Artifacts
@@ -159,12 +307,37 @@ jobs:
           # Generate index.yaml
           helm repo index repo --url "https://github.com/rulebricks/charts/releases/download/v${VERSION}"
 
-          # Upload index.yaml to release
-          if [ "${{ github.event_name }}" == "workflow_dispatch" ]; then
-            gh release upload "v${VERSION}" repo/index.yaml --clobber
-          else
-            # For push events, the index.yaml is already included in the recreated release
-            echo "Index.yaml already included in recreated release"
+          # Function to upload index with retries
+          upload_index() {
+            local max_retries=3
+            local retry_delay=2
+            local attempt=1
+
+            while [ $attempt -le $max_retries ]; do
+              echo "📤 Attempt $attempt to upload index.yaml..."
+
+              if gh release upload "v${VERSION}" repo/index.yaml --clobber; then
+                echo "✅ Successfully uploaded index.yaml"
+                return 0
+              fi
+
+              echo "⚠️  Failed attempt $attempt"
+              if [ $attempt -lt $max_retries ]; then
+                echo "⏳ Retrying in $retry_delay seconds..."
+                sleep $retry_delay
+                retry_delay=$((retry_delay * 2))
+              fi
+
+              attempt=$((attempt + 1))
+            done
+
+            echo "❌ Failed to upload index.yaml after $max_retries attempts"
+            return 1
+          }
+
+          if ! upload_index; then
+            echo "::error::Failed to upload index.yaml"
+            exit 1
           fi
 
       - name: Summary
@@ -173,9 +346,16 @@ jobs:
 
           echo "## 🎉 Release Summary" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo "- **Version**: ${VERSION}" >> $GITHUB_STEP_SUMMARY
-          echo "- **Tag**: v${VERSION}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Version**: v${VERSION}" >> $GITHUB_STEP_SUMMARY
           echo "- **Release URL**: https://github.com/rulebricks/charts/releases/tag/v${VERSION}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Triggered by**: ${{ github.event_name }}" >> $GITHUB_STEP_SUMMARY
+          if [ -n "${{ github.event.inputs.version }}" ]; then
+            echo "- **Reason**: New application version available" >> $GITHUB_STEP_SUMMARY
+          elif [ "${{ github.event_name }}" == "push" ]; then
+            echo "- **Reason**: Charts/Infrastructure update" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "- **Reason**: Manually updated" >> $GITHUB_STEP_SUMMARY
+          fi
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "### 📦 Artifacts" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
