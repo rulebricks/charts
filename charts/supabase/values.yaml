@@ -472,6 +472,7 @@ realtime:
     ERL_AFLAGS: -proto_dist inet_tcp
     ENABLE_TAILSCALE: "false"
     DNS_NODES: "''"
+    MAX_HEADER_LENGTH: "8192"
   # volumeMounts:
   #   - name: volume_name
   #     mountPath: /path/to/my/secret
