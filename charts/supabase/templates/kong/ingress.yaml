@@ -13,10 +13,12 @@ metadata:
   name: {{ $fullName }}
   labels:
     {{- include "supabase.labels" . | nindent 4 }}
-  {{- with .Values.kong.ingress.annotations }}
   annotations:
-    {{- toYaml . | nindent 4 }}
-  {{- end }}
+    {{- range $key, $value := .Values.kong.ingress.annotations }}
+    {{- if not (hasPrefix "nginx.ingress.kubernetes.io" $key) }}
+    {{ $key }}: {{ $value | quote }}
+    {{- end }}
+    {{- end }}
 spec:
   {{- if and .Values.kong.ingress.className (semverCompare ">=1.18-0" .Capabilities.KubeVersion.GitVersion) }}
   ingressClassName: {{ .Values.kong.ingress.className }}
