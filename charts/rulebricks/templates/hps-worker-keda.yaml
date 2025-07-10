@@ -15,7 +15,7 @@ spec:
   # Primary trigger: Kafka lag
   - type: kafka
     metadata:
-      bootstrapServers: {{ required "Kafka brokers required for KEDA" .Values.app.logging.kafkaBrokers }}
+      bootstrapServers: {{ if and .Values.app.logging .Values.app.logging.kafkaBrokers }}{{ .Values.app.logging.kafkaBrokers }}{{ else }}kafka.rulebricks-execution.svc.cluster.local:9092{{ end }}
       consumerGroup: generic-workers
       topic: bulk-solve,flows,parallel-solve  # All high-volume topics
       lagThreshold: "{{ .Values.hps.workers.keda.lagThreshold | default 100 }}"

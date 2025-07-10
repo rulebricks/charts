@@ -24,7 +24,7 @@ Rulebricks deployments require manual upgrades to ensure controlled rollouts and
 
 ```bash
 # Check for updates
-rulebricks upgrade status
+rulebricks upgrade list
 
 # Upgrade to latest version
 rulebricks upgrade
@@ -33,44 +33,7 @@ rulebricks upgrade
 rulebricks upgrade --version 1.2.3
 ```
 
-### Automating Upgrades (Optional)
-
-If you want automatic updates, you can set up your own automation:
-
-**Example using cron:**
-```bash
-# Add to crontab to check for updates weekly
-0 2 * * 0 /usr/local/bin/rulebricks upgrade --yes
-```
-
-**Example using Kubernetes CronJob:**
-```yaml
-apiVersion: batch/v1
-kind: CronJob
-metadata:
-  name: rulebricks-updater
-  namespace: rulebricks
-spec:
-  schedule: "0 2 * * 0"  # Weekly on Sunday at 2 AM
-  jobTemplate:
-    spec:
-      template:
-        spec:
-          containers:
-          - name: updater
-            image: rulebricks/cli:latest
-            command:
-            - rulebricks
-            - upgrade
-            - --yes
-          restartPolicy: OnFailure
-```
-
-### Using Helm directly
-**Note:** Automatic updates are not built into the charts. To automate upgrades, you can:
-- Set up a cron job to run `rulebricks upgrade` periodically
-- Use a Kubernetes CronJob to check and apply updates
-- Integrate with your existing CI/CD pipeline
+Automatic updates are not built into the charts. To automate upgrades, you can set up a cron job to run `rulebricks upgrade` periodically.
 
 ### Common Issues
 

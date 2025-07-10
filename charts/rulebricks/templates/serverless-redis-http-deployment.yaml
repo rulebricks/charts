@@ -13,6 +13,14 @@ spec:
       labels:
         app: serverless-redis-http
     spec:
+      {{- with .Values.redis.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.redis.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
       containers:
         - name: serverless-redis-http
           image: hiett/serverless-redis-http:latest

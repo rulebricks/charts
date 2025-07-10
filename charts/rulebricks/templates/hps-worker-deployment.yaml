@@ -16,6 +16,14 @@ spec:
     spec:
       imagePullSecrets:
         - name: regcred
+      {{- with .Values.hps.workers.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.hps.workers.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
       containers:
         - name: generic-worker
           # Use the generic-worker target from your multi-stage Dockerfile
