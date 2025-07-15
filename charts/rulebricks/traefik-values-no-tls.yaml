@@ -96,8 +96,7 @@ ports:
       port: 9100
     protocol: TCP
 
-additionalArguments:
-  - "--entrypoints.web.http.redirections.entryPoint=false"
+additionalArguments: []
 
 providers:
   kubernetesCRD:
