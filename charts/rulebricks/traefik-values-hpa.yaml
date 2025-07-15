@@ -50,7 +50,7 @@ deployment:
     type: RollingUpdate
     rollingUpdate:
       maxSurge: 1
-      maxUnavailable: 1  # Allow one pod to be unavailable for scaling
+      maxUnavailable: 1  # Allow one pod to be unavailable for faster updates
 
 # Pod anti-affinity for distribution
 affinity:
@@ -66,27 +66,23 @@ affinity:
                   - traefik
           topologyKey: kubernetes.io/hostname
 
+ingressClass:
+  enabled: true
+  isDefaultClass: true
+
 service:
   type: LoadBalancer
 
 ports:
   web:
-    port: 8000
+    port: 8000 # Changed from 80
     expose:
       enabled: true
       port: 80
     exposedPort: 80
     protocol: TCP
   websecure:
-    port: 8443
-    expose:
-      enabled: true
-      port: 443
-    exposedPort: 443
-    protocol: TCP
-    tls:
-      enabled: true
-      # No certResolver needed - cert-manager will provide certificates via secrets
+    enabled: false
   traefik:
     port: 9000
     expose:
@@ -101,24 +97,51 @@ ports:
     protocol: TCP
 
 additionalArguments:
-  - "--api.insecure=false"
-  - "--api.dashboard=true"
-  - "--log.level=ERROR"  # Reduce logging to prevent memory buildup
-  - "--accesslog=false"  # Disable access logs for memory efficiency
-  - "--entrypoints.metrics.address=:9100"
-  - "--entrypoints.traefik.address=:9000"
-  - "--entrypoints.web.address=:8000"
-  - "--entrypoints.websecure.address=:8443"
-  - "--entrypoints.web.http.redirections.entryPoint.to=websecure"
-  - "--entrypoints.web.http.redirections.entryPoint.scheme=https"
-  # These next three will be overridden by --set
-  # TLS/certificates will be handled by cert-manager, not Traefik's ACME
+  - "--entrypoints.web.http.redirections.entryPoint=false"
+  - "--entrypoints.web.http.redirections.entrypoint.to=:8000"
+  - "--entrypoints.web.http.redirections.entrypoint.scheme=http"
 
-# No init containers needed when using cert-manager
+providers:
+  kubernetesCRD:
+    enabled: true
+  kubernetesIngress:
+    enabled: true
 
-# Disable persistence to enable horizontal scaling with cert-manager
+logs:
+  general:
+    level: ERROR  # Reduce logging to prevent memory buildup
+  access:
+    enabled: false  # Disable access logs for memory efficiency
+
+# Explicitly disable SSL
+ssl:
+  enabled: false
+  enforced: false
+
+# Disable persistence to allow horizontal scaling
 persistence:
   enabled: false
+
+metrics:
+  prometheus:
+    enabled: false
+
+api:
+  dashboard: false
+
+# Pod disruption budget for high availability
+podDisruptionBudget:
+  enabled: true
+  minAvailable: 1
+
+# Enable graceful shutdown
+lifecycle:
+  preStop:
+    exec:
+      command:
+        - sh
+        - -c
+        - sleep 15
 
 # Security contexts
 podSecurityContext:
@@ -131,35 +154,3 @@ securityContext:
   runAsGroup: 65532
   runAsNonRoot: true
   runAsUser: 65532
-
-# Configure providers
-providers:
-  kubernetesCRD:
-    enabled: true
-  kubernetesIngress:
-    enabled: true
-    publishedService:
-      enabled: true
-
-# Enable metrics
-metrics:
-  prometheus:
-    enabled: true
-    serviceMonitor:
-      enabled: false
-    addEntryPointsLabels: false  # Reduce cardinality
-    addServicesLabels: false     # Reduce cardinality
-
-# Global arguments
-globalArguments:
-  - "--global.checknewversion"
-
-# Enable API and ping
-api:
-  dashboard: true
-  insecure: false
-
-ping:
-  enabled: true
-  manualRouting: true
-  entryPoint: "traefik"
