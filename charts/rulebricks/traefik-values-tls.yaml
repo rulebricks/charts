@@ -109,10 +109,8 @@ additionalArguments:
   - "--entrypoints.traefik.address=:9000"
   - "--entrypoints.web.address=:8000"
   - "--entrypoints.websecure.address=:8443"
-  - "--entrypoints.web.http.redirections.entryPoint.to=websecure"
-  - "--entrypoints.web.http.redirections.entryPoint.scheme=https"
-  # These next three will be overridden by --set
-  # TLS/certificates will be handled by cert-manager, not Traefik's ACME
+  # HTTP->HTTPS redirect removed to allow ACME challenges
+  # Redirect is now handled by IngressRoute with exceptions for /.well-known/acme-challenge/
 
 # No init containers needed when using cert-manager
 
