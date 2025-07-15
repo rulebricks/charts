@@ -51,7 +51,7 @@ jobs:
             while [ $attempt -le $max_retries ]; do
               echo "🔍 Attempt $attempt to fetch latest release..." >&2
 
-              RESPONSE=$(curl -s -w "\n%{http_code}" https://api.github.com/repos/rulebricks/charts/releases/latest)
+              RESPONSE=$(curl -s -w "\n%{http_code}" -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" https://api.github.com/repos/rulebricks/charts/releases/latest)
               HTTP_CODE=$(echo "$RESPONSE" | tail -n1)
               BODY=$(echo "$RESPONSE" | head -n-1)
 
