@@ -1,3 +1,71 @@
+# HPA configuration for automatic scaling
+autoscaling:
+  enabled: true
+  minReplicas: 1
+  maxReplicas: 2
+  metrics:
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: 70
+    - type: Resource
+      resource:
+        name: memory
+        target:
+          type: Utilization
+          averageUtilization: 80
+  behavior:
+    scaleDown:
+      stabilizationWindowSeconds: 300
+      policies:
+        - type: Percent
+          value: 10
+          periodSeconds: 60
+    scaleUp:
+      stabilizationWindowSeconds: 60
+      policies:
+        - type: Percent
+          value: 100
+          periodSeconds: 15
+        - type: Pods
+          value: 4
+          periodSeconds: 15
+      selectPolicy: Max
+
+# Resource configuration
+resources:
+  requests:
+    cpu: "1500m"
+    memory: "3Gi"
+  limits:
+    cpu: "2000m"
+    memory: "4Gi"
+
+# Deployment configuration
+deployment:
+  replicas: 1  # HPA will handle scaling
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0  # Zero downtime
+
+# Pod anti-affinity for distribution
+affinity:
+  podAntiAffinity:
+    preferredDuringSchedulingIgnoredDuringExecution:
+      - weight: 100
+        podAffinityTerm:
+          labelSelector:
+            matchExpressions:
+              - key: app.kubernetes.io/name
+                operator: In
+                values:
+                  - traefik
+          topologyKey: kubernetes.io/hostname
+
 ingressClass:
   enabled: true
   isDefaultClass: true
@@ -41,9 +109,9 @@ providers:
 
 logs:
   general:
-    level: DEBUG
+    level: ERROR  # Reduce logging to prevent memory buildup
   access:
-    enabled: true
+    enabled: false  # Disable access logs for memory efficiency
 
 # Explicitly disable SSL
 ssl:
@@ -51,6 +119,16 @@ ssl:
   enforced: false
 
 # Disable metrics and dashboard for simplicity
+# Enable persistence for shared storage across replicas
+persistence:
+  enabled: true
+  path: /data
+  size: 1Gi
+  accessMode: ReadWriteOnce
+  storageClass: "standard"  # Default storage class, CLI will override based on cloud provider
+  annotations:
+    helm.sh/resource-policy: keep  # Prevent PVC deletion on helm uninstall
+
 metrics:
   prometheus:
     enabled: false

@@ -1,3 +1,71 @@
+# HPA configuration for automatic scaling
+autoscaling:
+  enabled: true
+  minReplicas: 1
+  maxReplicas: 2
+  metrics:
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: 70
+    - type: Resource
+      resource:
+        name: memory
+        target:
+          type: Utilization
+          averageUtilization: 80
+  behavior:
+    scaleDown:
+      stabilizationWindowSeconds: 300
+      policies:
+        - type: Percent
+          value: 10
+          periodSeconds: 60
+    scaleUp:
+      stabilizationWindowSeconds: 60
+      policies:
+        - type: Percent
+          value: 100
+          periodSeconds: 15
+        - type: Pods
+          value: 4
+          periodSeconds: 15
+      selectPolicy: Max
+
+# Resource configuration
+resources:
+  requests:
+    cpu: "1500m"
+    memory: "3Gi"
+  limits:
+    cpu: "2000m"
+    memory: "4Gi"
+
+# Deployment configuration
+deployment:
+  replicas: 1  # HPA will handle scaling
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0  # Zero downtime
+
+# Pod anti-affinity for distribution
+affinity:
+  podAntiAffinity:
+    preferredDuringSchedulingIgnoredDuringExecution:
+      - weight: 100
+        podAffinityTerm:
+          labelSelector:
+            matchExpressions:
+              - key: app.kubernetes.io/name
+                operator: In
+                values:
+                  - traefik
+          topologyKey: kubernetes.io/hostname
+
 service:
   type: LoadBalancer
 
@@ -37,8 +105,8 @@ ports:
 additionalArguments:
   - "--api.insecure=false"
   - "--api.dashboard=true"
-  - "--log.level=DEBUG"
-  - "--accesslog=true"
+  - "--log.level=ERROR"  # Reduce logging to prevent memory buildup
+  - "--accesslog=false"  # Disable access logs for memory efficiency
   - "--entrypoints.metrics.address=:9100"
   - "--entrypoints.traefik.address=:9000"
   - "--entrypoints.web.address=:8000"
@@ -77,13 +145,13 @@ initContainers:
 persistence:
   enabled: true
   path: /data
-  size: 128Mi
+  size: 1Gi  # Increased for better certificate management
   accessMode: ReadWriteOnce
-  storageClass: "gp2"
+  storageClass: "standard"  # Default storage class, CLI will override based on cloud provider
   annotations:
     # Add annotations to help with permission management
     kubernetes.io/pvc-protection: "true"
-    helm.sh/resource-policy: keep
+    helm.sh/resource-policy: keep  # Prevent PVC deletion on helm uninstall
 
 # Security contexts
 podSecurityContext:
@@ -112,6 +180,8 @@ metrics:
     enabled: true
     serviceMonitor:
       enabled: false
+    addEntryPointsLabels: false  # Reduce cardinality
+    addServicesLabels: false     # Reduce cardinality
 
 # Global arguments
 globalArguments:
