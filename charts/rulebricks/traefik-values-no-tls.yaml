@@ -119,9 +119,9 @@ ssl:
   enforced: false
 
 # Disable metrics and dashboard for simplicity
-# Enable persistence for shared storage across replicas
+# Disable persistence to allow horizontal scaling with HPA
 persistence:
-  enabled: true
+  enabled: false
   path: /data
   size: 1Gi
   accessMode: ReadWriteOnce
