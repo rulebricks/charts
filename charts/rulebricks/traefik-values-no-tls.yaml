@@ -98,8 +98,6 @@ ports:
 
 additionalArguments:
   - "--entrypoints.web.http.redirections.entryPoint=false"
-  - "--entrypoints.web.http.redirections.entrypoint.to=:8000"
-  - "--entrypoints.web.http.redirections.entrypoint.scheme=http"
 
 providers:
   kubernetesCRD:
