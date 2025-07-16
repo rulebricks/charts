@@ -23,6 +23,20 @@ spec:
       tolerations:
         {{- toYaml . | nindent 8 }}
       {{- end }}
+      {{- with .Values.hps.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- else }}
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+          - weight: 100
+            podAffinityTerm:
+              labelSelector:
+                matchLabels:
+                  app: rulebricks-hps
+              topologyKey: kubernetes.io/hostname
+      {{- end }}
       containers:
         - name: rulebricks-hps
           image: {{ .Values.hps.image.repository }}:latest
