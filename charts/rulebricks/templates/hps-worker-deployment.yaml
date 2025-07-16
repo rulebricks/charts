@@ -27,15 +27,31 @@ spec:
       {{- with .Values.hps.workers.affinity }}
       affinity:
         {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.hps.workers.topologySpreadConstraints }}
+      topologySpreadConstraints:
+        {{- toYaml . | nindent 8 }}
       {{- else }}
+      topologySpreadConstraints:
+      - maxSkew: 1
+        topologyKey: kubernetes.io/hostname
+        whenUnsatisfiable: DoNotSchedule
+        labelSelector:
+          matchLabels:
+            app: rulebricks-hps-worker
+      {{- end }}
+      {{- if not .Values.hps.workers.affinity }}
       affinity:
         podAntiAffinity:
           preferredDuringSchedulingIgnoredDuringExecution:
           - weight: 100
             podAffinityTerm:
               labelSelector:
-                matchLabels:
-                  app: rulebricks-hps-worker
+                matchExpressions:
+                - key: app
+                  operator: In
+                  values:
+                  - rulebricks-hps-worker
               topologyKey: kubernetes.io/hostname
       {{- end }}
       containers:
