@@ -27,13 +27,6 @@ spec:
       topic: flows
       lagThreshold: "{{ .Values.hps.workers.keda.lagThreshold | default 100 }}"
       offsetResetPolicy: latest
-  - type: kafka
-    metadata:
-      bootstrapServers: {{ if and .Values.app.logging .Values.app.logging.kafkaBrokers }}{{ .Values.app.logging.kafkaBrokers }}{{ else }}kafka.rulebricks-execution.svc.cluster.local:9092{{ end }}
-      consumerGroup: generic-workers
-      topic: parallel-solve
-      lagThreshold: "{{ .Values.hps.workers.keda.lagThreshold | default 100 }}"
-      offsetResetPolicy: latest
   # Backup trigger: CPU (in case Kafka metrics fail)
   - type: cpu
     metadata:
