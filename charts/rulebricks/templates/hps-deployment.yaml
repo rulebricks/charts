@@ -1,10 +1,29 @@
 {{- if and .Values.hps .Values.hps.enabled }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: rulebricks-hps-headless
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app: rulebricks-hps
+spec:
+  clusterIP: None
+  selector:
+    app: rulebricks-hps
+  ports:
+    - port: 3000
+      targetPort: 3000
+      protocol: TCP
+      name: http
+---
 apiVersion: apps/v1
-kind: Deployment
+kind: StatefulSet
 metadata:
   name: rulebricks-hps
   namespace: {{ .Release.Namespace }}
 spec:
+  serviceName: rulebricks-hps-headless
+  replicas: {{ .Values.hps.replicas | default 1 }}
   selector:
     matchLabels:
       app: rulebricks-hps
@@ -63,11 +82,11 @@ spec:
               protocol: TCP
           resources:
             requests:
-              cpu: {{ .Values.hps.resources.requests.cpu | default "250m" }}
-              memory: {{ .Values.hps.resources.requests.memory | default "256Mi" }}
+              cpu: {{ .Values.hps.resources.requests.cpu | default "1000m" }}
+              memory: {{ .Values.hps.resources.requests.memory | default "1Gi" }}
             limits:
-              cpu: {{ .Values.hps.resources.limits.cpu | default "1000m" }}
-              memory: {{ .Values.hps.resources.limits.memory | default "1Gi" }}
+              cpu: {{ .Values.hps.resources.limits.cpu | default "2000m" }}
+              memory: {{ .Values.hps.resources.limits.memory | default "2Gi" }}
           livenessProbe:
             httpGet:
               path: /health
