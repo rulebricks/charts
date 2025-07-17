@@ -1,10 +1,26 @@
 {{- if and .Values.hps .Values.hps.enabled .Values.hps.workers.enabled }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: rulebricks-hps-worker
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app: rulebricks-hps-worker
+spec:
+  clusterIP: None
+  selector:
+    app: rulebricks-hps-worker
+  ports:
+    - port: 80
+      targetPort: 3000
+---
 apiVersion: apps/v1
-kind: Deployment
+kind: StatefulSet
 metadata:
   name: rulebricks-hps-worker
   namespace: {{ .Release.Namespace }}
 spec:
+  serviceName: rulebricks-hps-worker
   replicas: {{ .Values.hps.workers.replicas | default 3 }}
   selector:
     matchLabels:
@@ -27,20 +43,7 @@ spec:
       {{- with .Values.hps.workers.affinity }}
       affinity:
         {{- toYaml . | nindent 8 }}
-      {{- end }}
-      {{- with .Values.hps.workers.topologySpreadConstraints }}
-      topologySpreadConstraints:
-        {{- toYaml . | nindent 8 }}
       {{- else }}
-      topologySpreadConstraints:
-      - maxSkew: 1
-        topologyKey: kubernetes.io/hostname
-        whenUnsatisfiable: DoNotSchedule
-        labelSelector:
-          matchLabels:
-            app: rulebricks-hps-worker
-      {{- end }}
-      {{- if not .Values.hps.workers.affinity }}
       affinity:
         podAntiAffinity:
           preferredDuringSchedulingIgnoredDuringExecution:
@@ -54,9 +57,20 @@ spec:
                   - rulebricks-hps-worker
               topologyKey: kubernetes.io/hostname
       {{- end }}
+      {{- with .Values.hps.workers.topologySpreadConstraints }}
+      topologySpreadConstraints:
+        {{- toYaml . | nindent 8 }}
+      {{- else }}
+      topologySpreadConstraints:
+      - maxSkew: 1
+        topologyKey: kubernetes.io/hostname
+        whenUnsatisfiable: DoNotSchedule
+        labelSelector:
+          matchLabels:
+            app: rulebricks-hps-worker
+      {{- end }}
       containers:
         - name: generic-worker
-          # Use the generic-worker target from your multi-stage Dockerfile
           image: {{ .Values.hps.image.repository }}:worker-latest
           imagePullPolicy: {{ .Values.hps.image.pullPolicy }}
           resources:
@@ -66,16 +80,12 @@ spec:
             limits:
               cpu: {{ .Values.hps.workers.resources.limits.cpu | default "500m" }}
               memory: {{ .Values.hps.workers.resources.limits.memory | default "512Mi" }}
-          # Workers don't need health checks on HTTP - they consume from Kafka
-          # Workers will be restarted by Kubernetes if they crash
           envFrom:
             - configMapRef:
                 name: app-config
           env:
-            # Optional: limit which topics this deployment handles
             - name: WORKER_TOPICS
-              value: {{ .Values.hps.workers.topics | default "solve,bulk-solve,flows,parallel-solve" | quote }}
-            # Add any worker-specific overrides here
+              value: {{ .Values.hps.workers.topics | default "solution" | quote }}
             - name: NODE_ENV
               value: "production"
 {{- end }}

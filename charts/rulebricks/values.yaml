@@ -105,7 +105,7 @@ hps:
   workers:
     enabled: true
     replicas: 3  # Starting replicas
-    topics: "bulk-solve,flows,parallel-solve"
+    topics: "solution"
     resources:
       requests:
         cpu: "100m"
