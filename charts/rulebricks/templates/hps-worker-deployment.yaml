@@ -56,6 +56,24 @@ spec:
                   values:
                   - rulebricks-hps-worker
               topologyKey: kubernetes.io/hostname
+          - weight: 80
+            podAffinityTerm:
+              labelSelector:
+                matchExpressions:
+                - key: app
+                  operator: In
+                  values:
+                  - rulebricks-hps
+              topologyKey: kubernetes.io/hostname
+          - weight: 80
+            podAffinityTerm:
+              labelSelector:
+                matchExpressions:
+                - key: app.kubernetes.io/name
+                  operator: In
+                  values:
+                  - kafka
+              topologyKey: kubernetes.io/hostname
       {{- end }}
       {{- with .Values.hps.workers.topologySpreadConstraints }}
       topologySpreadConstraints:
@@ -68,6 +86,12 @@ spec:
         labelSelector:
           matchLabels:
             app: rulebricks-hps-worker
+      - maxSkew: 2
+        topologyKey: kubernetes.io/hostname
+        whenUnsatisfiable: DoNotSchedule
+        labelSelector:
+          matchLabels:
+            app: rulebricks-hps-worker
       {{- end }}
       containers:
         - name: generic-worker
@@ -75,8 +99,8 @@ spec:
           imagePullPolicy: {{ .Values.hps.image.pullPolicy }}
           resources:
             requests:
-              cpu: {{ .Values.hps.workers.resources.requests.cpu | default "100m" }}
-              memory: {{ .Values.hps.workers.resources.requests.memory | default "128Mi" }}
+              cpu: {{ .Values.hps.workers.resources.requests.cpu | default "250m" }}
+              memory: {{ .Values.hps.workers.resources.requests.memory | default "256Mi" }}
             limits:
               cpu: {{ .Values.hps.workers.resources.limits.cpu | default "500m" }}
               memory: {{ .Values.hps.workers.resources.limits.memory | default "512Mi" }}

@@ -25,10 +25,5 @@ spec:
   - type: cpu
     metadata:
       type: Utilization
-      value: "{{ .Values.hps.workers.keda.cpuThreshold | default 75 }}"
-  # Optional: Memory trigger
-  - type: memory
-    metadata:
-      type: Utilization
-      value: "{{ .Values.hps.workers.keda.memoryThreshold | default 80 }}"
+      value: "{{ .Values.hps.workers.keda.cpuThreshold | default 25 }}"
 {{- end }}

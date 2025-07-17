@@ -71,6 +71,24 @@ spec:
                   values:
                   - rulebricks-hps
               topologyKey: kubernetes.io/hostname
+          - weight: 80
+            podAffinityTerm:
+              labelSelector:
+                matchExpressions:
+                - key: app
+                  operator: In
+                  values:
+                  - rulebricks-hps-worker
+              topologyKey: kubernetes.io/hostname
+          - weight: 80
+            podAffinityTerm:
+              labelSelector:
+                matchExpressions:
+                - key: app.kubernetes.io/name
+                  operator: In
+                  values:
+                  - kafka
+              topologyKey: kubernetes.io/hostname
       {{- end }}
       containers:
         - name: rulebricks-hps
