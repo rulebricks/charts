@@ -6,6 +6,7 @@ metadata:
   namespace: {{ .Release.Namespace }}
 spec:
   scaleTargetRef:
+    kind: StatefulSet
     name: rulebricks-hps-worker
   minReplicaCount: {{ .Values.hps.workers.keda.minReplicaCount | default 3 }}
   maxReplicaCount: {{ .Values.hps.workers.keda.maxReplicaCount | default 50 }}
