@@ -106,4 +106,9 @@ spec:
           envFrom:
             - configMapRef:
                 name: app-config
+          env:
+            - name: HPS_REPLICAS
+              value: "{{ .Values.hps.replicas }}"
+            - name: MAX_WORKERS
+              value: "{{ .Values.hps.workers.keda.maxReplicaCount | default 8 }}"
 {{- end }}
